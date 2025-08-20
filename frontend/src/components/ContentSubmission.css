@@ -1,0 +1,13 @@
+.error-message {
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Estilos adicionais específicos para ContentSubmission */
+.input-container textarea:focus,
+.input-container input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
