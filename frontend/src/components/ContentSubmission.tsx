@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './ContentSubmission.css';
+import { analyzeContent } from '../services/api';
 
 /**
  * Componente de submissão inicial.
@@ -12,10 +13,11 @@ export interface ContentData {
 }
 
 interface ContentSubmissionProps {
-  onSubmit: (data: ContentData) => void;
+  onAnalysisStart: () => void;
+  onAnalysisComplete: (data: any) => void;
 }
 
-const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onSubmit }) => {
+const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, onAnalysisComplete }) => {
   const [contentType, setContentType] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -25,7 +27,7 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onSubmit }) => {
     setError('');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!contentType) {
       setError('Por favor, selecione um tipo de conteúdo');
       return;
@@ -38,7 +40,18 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onSubmit }) => {
       setError('Por favor, insira um link válido começando com http:// ou https://');
       return;
     }
-    onSubmit({ type: contentType, content });
+
+    setError('');
+    onAnalysisStart();
+
+    try {
+      const result = await analyzeContent(contentType, content);
+      onAnalysisComplete(result);
+    } catch (err) {
+      setError('Ocorreu um erro ao analisar o conteúdo. Tente novamente.');
+      // Optional: switch back to submission form on error
+      // onNewAnalysis();
+    }
   };
 
   return (
