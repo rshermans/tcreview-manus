@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './ContentSubmission.css';
 import { analyzeContent } from '../services/api';
 
@@ -17,7 +17,7 @@ interface ContentSubmissionProps {
   onAnalysisComplete: (data: any) => void;
 }
 
-const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, onAnalysisComplete }) => {
+const ContentSubmission = ({ onAnalysisStart, onAnalysisComplete }: ContentSubmissionProps) => {
   const [contentType, setContentType] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
   const [error, setError] = useState<string>('');
