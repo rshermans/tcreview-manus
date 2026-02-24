@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { AnalysisResult } from '../components/Results';
 
 /*
  * Serviço API para comunicar com o backend TrueCheck.
@@ -6,33 +7,43 @@ import axios from 'axios';
  */
 const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export async function analyzeContent(contentType: string, content: string): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/preliminary`, {
+/**
+ * Helper genérico para requisições POST.
+ * Centraliza a construção da URL, logging de erros e extração de dados do axios.
+ */
+async function post<T>(endpoint: string, data: Record<string, unknown>): Promise<T> {
+  try {
+    const response = await axios.post<T>(`${API_URL}${endpoint}`, data);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro na requisição POST para ${endpoint}:`, error);
+    throw error;
+  }
+}
+
+export async function analyzeContent(contentType: string, content: string): Promise<AnalysisResult> {
+  return post<AnalysisResult>('/analysis/preliminary', {
     type: contentType,
     content: content,
   });
-  return response.data;
 }
 
-export async function crossVerifyContent(content: string, analysis: any): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/cross-verification`, {
+export async function crossVerifyContent(content: string, analysis: unknown): Promise<unknown> {
+  return post<unknown>('/analysis/cross-verification', {
     content: content,
     analysis: analysis,
   });
-  return response.data;
 }
 
-export async function analyzeContext(content: string): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/context`, { content });
-  return response.data;
+export async function analyzeContext(content: string): Promise<unknown> {
+  return post<unknown>('/analysis/context', { content });
 }
 
-export async function getFinalEvaluation(userPerception: any, aiAnalysis: any): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/final`, {
+export async function getFinalEvaluation(userPerception: unknown, aiAnalysis: unknown): Promise<unknown> {
+  return post<unknown>('/analysis/final', {
     user_perception: userPerception,
     ai_analysis: aiAnalysis,
   });
-  return response.data;
 }
 
 const api = {
