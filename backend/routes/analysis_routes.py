@@ -1,7 +1,9 @@
+import logging
 from flask import Blueprint, jsonify, request
 from services.llm_service import analyze_content, cross_verify_content, analyze_context, final_evaluation
 
 analysis_bp = Blueprint('analysis', __name__)
+logger = logging.getLogger(__name__)
 
 @analysis_bp.route('/preliminary', methods=['POST'])
 def preliminary_analysis():
@@ -17,7 +19,8 @@ def preliminary_analysis():
         analysis_result = analyze_content(content_type, content)
         return jsonify(analysis_result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na análise preliminar")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/cross-verification', methods=['POST'])
 def cross_verification():
@@ -30,7 +33,8 @@ def cross_verification():
         result = cross_verify_content(data['content'], data['analysis'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na verificação cruzada")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/context', methods=['POST'])
 def context_analysis():
@@ -43,7 +47,8 @@ def context_analysis():
         result = analyze_context(data['content'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na análise de contexto")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/final', methods=['POST'])
 def final_evaluation_route():
@@ -56,4 +61,5 @@ def final_evaluation_route():
         result = final_evaluation(data['user_perception'], data['ai_analysis'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na avaliação final")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
