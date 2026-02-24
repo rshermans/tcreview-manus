@@ -1,4 +1,11 @@
 import axios from 'axios';
+import type {
+  AnalysisResult,
+  CrossVerificationResult,
+  ContextAnalysisResult,
+  FinalEvaluationResult,
+  ScoreData,
+} from '../types/api';
 
 /*
  * Serviço API para comunicar com o backend TrueCheck.
@@ -6,7 +13,7 @@ import axios from 'axios';
  */
 const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export async function analyzeContent(contentType: string, content: string): Promise<any> {
+export async function analyzeContent(contentType: string, content: string): Promise<AnalysisResult> {
   const response = await axios.post(`${API_URL}/analysis/preliminary`, {
     type: contentType,
     content: content,
@@ -14,7 +21,10 @@ export async function analyzeContent(contentType: string, content: string): Prom
   return response.data;
 }
 
-export async function crossVerifyContent(content: string, analysis: any): Promise<any> {
+export async function crossVerifyContent(
+  content: string,
+  analysis: AnalysisResult
+): Promise<CrossVerificationResult> {
   const response = await axios.post(`${API_URL}/analysis/cross-verification`, {
     content: content,
     analysis: analysis,
@@ -22,12 +32,15 @@ export async function crossVerifyContent(content: string, analysis: any): Promis
   return response.data;
 }
 
-export async function analyzeContext(content: string): Promise<any> {
+export async function analyzeContext(content: string): Promise<ContextAnalysisResult> {
   const response = await axios.post(`${API_URL}/analysis/context`, { content });
   return response.data;
 }
 
-export async function getFinalEvaluation(userPerception: any, aiAnalysis: any): Promise<any> {
+export async function getFinalEvaluation(
+  userPerception: ScoreData,
+  aiAnalysis: ScoreData
+): Promise<FinalEvaluationResult> {
   const response = await axios.post(`${API_URL}/analysis/final`, {
     user_perception: userPerception,
     ai_analysis: aiAnalysis,
