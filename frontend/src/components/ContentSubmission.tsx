@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ContentSubmission.css';
-import { analyzeContent } from '../services/api';
+import { analyzeContent, type AnalysisResult } from '../services/api';
 
 /**
  * Componente de submissão inicial.
@@ -14,7 +14,7 @@ export interface ContentData {
 
 interface ContentSubmissionProps {
   onAnalysisStart: () => void;
-  onAnalysisComplete: (data: any) => void;
+  onAnalysisComplete: (data: AnalysisResult) => void;
 }
 
 const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, onAnalysisComplete }) => {
@@ -47,7 +47,7 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, 
     try {
       const result = await analyzeContent(contentType, content);
       onAnalysisComplete(result);
-    } catch (err) {
+    } catch {
       setError('Ocorreu um erro ao analisar o conteúdo. Tente novamente.');
       // Optional: switch back to submission form on error
       // onNewAnalysis();
