@@ -14,15 +14,46 @@ export interface ContentData {
 
 interface ContentSubmissionProps {
   onAnalysisStart: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAnalysisComplete: (data: any) => void;
 }
 
+type ContentType = 'text' | 'link' | 'image';
+
+interface ContentTypeConfig {
+  id: ContentType;
+  label: string;
+  inputLabel: string;
+  placeholder: string;
+}
+
+const CONTENT_TYPES: ContentTypeConfig[] = [
+  {
+    id: 'text',
+    label: 'Texto',
+    inputLabel: 'Insira o texto para verificação:',
+    placeholder: 'Cole ou digite o texto aqui...',
+  },
+  {
+    id: 'link',
+    label: 'Link',
+    inputLabel: 'Insira o link para verificação:',
+    placeholder: 'https://exemplo.com/noticia',
+  },
+  {
+    id: 'image',
+    label: 'Imagem',
+    inputLabel: 'Insira o URL da imagem para verificação:',
+    placeholder: 'https://exemplo.com/imagem.jpg',
+  },
+];
+
 const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, onAnalysisComplete }) => {
-  const [contentType, setContentType] = useState<string | null>(null);
+  const [contentType, setContentType] = useState<ContentType | null>(null);
   const [content, setContent] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  const handleTypeSelection = (type: string) => {
+  const handleTypeSelection = (type: ContentType) => {
     setContentType(type);
     setError('');
   };
@@ -47,12 +78,14 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, 
     try {
       const result = await analyzeContent(contentType, content);
       onAnalysisComplete(result);
-    } catch (err) {
+    } catch {
       setError('Ocorreu um erro ao analisar o conteúdo. Tente novamente.');
       // Optional: switch back to submission form on error
       // onNewAnalysis();
     }
   };
+
+  const currentTypeConfig = CONTENT_TYPES.find(t => t.id === contentType);
 
   return (
     <div className="card">
@@ -60,49 +93,34 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, 
       <p>Selecione o tipo de conteúdo que deseja verificar:</p>
 
       <div className="button-group">
-        <button
-          className={contentType === 'text' ? 'button active' : 'button secondary'}
-          onClick={() => handleTypeSelection('text')}
-        >
-          Texto
-        </button>
-        <button
-          className={contentType === 'link' ? 'button active' : 'button secondary'}
-          onClick={() => handleTypeSelection('link')}
-        >
-          Link
-        </button>
-        <button
-          className={contentType === 'image' ? 'button active' : 'button secondary'}
-          onClick={() => handleTypeSelection('image')}
-        >
-          Imagem
-        </button>
+        {CONTENT_TYPES.map((type) => (
+          <button
+            key={type.id}
+            className={contentType === type.id ? 'button active' : 'button secondary'}
+            onClick={() => handleTypeSelection(type.id)}
+          >
+            {type.label}
+          </button>
+        ))}
       </div>
 
       {contentType && (
         <div className="input-container">
           <label>
-            {contentType === 'text' && 'Insira o texto para verificação:'}
-            {contentType === 'link' && 'Insira o link para verificação:'}
-            {contentType === 'image' && 'Insira o URL da imagem para verificação:'}
+            {currentTypeConfig?.inputLabel}
           </label>
           {contentType === 'text' ? (
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Cole ou digite o texto aqui..."
+              placeholder={currentTypeConfig?.placeholder}
             />
           ) : (
             <input
               type="text"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder={
-                contentType === 'link'
-                  ? 'https://exemplo.com/noticia'
-                  : 'https://exemplo.com/imagem.jpg'
-              }
+              placeholder={currentTypeConfig?.placeholder}
             />
           )}
           {error && <p className="error-message">{error}</p>}
