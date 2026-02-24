@@ -67,8 +67,19 @@ def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     Returns mock data.
     """
     logger.info("Calculando avaliação final (mock)...")
-    user_score = sum(user_perception.values()) / len(user_perception.values())
-    ai_score = sum(ai_analysis.values()) / len(ai_analysis.values())
+
+    def calculate_average(data: dict) -> float:
+        if not data:
+            return 0.0
+
+        valid_values = [v for v in data.values() if isinstance(v, (int, float))]
+        if not valid_values:
+            return 0.0
+
+        return sum(valid_values) / len(valid_values)
+
+    user_score = calculate_average(user_perception)
+    ai_score = calculate_average(ai_analysis)
 
     final_score = (user_score * 0.3) + (ai_score * 0.7) # Ponderado para a IA
 
