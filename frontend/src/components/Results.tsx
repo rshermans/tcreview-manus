@@ -15,6 +15,15 @@ interface ResultsProps {
   onNewAnalysis: () => void;
 }
 
+type ScoreKey = Exclude<keyof AnalysisResult, 'analysis'>;
+
+const scoreConfig: { key: ScoreKey; label: string }[] = [
+  { key: 'sourceReliability', label: 'Confiabilidade da Fonte' },
+  { key: 'factualConsistency', label: 'Consistência Factual' },
+  { key: 'contentQuality', label: 'Qualidade do Conteúdo' },
+  { key: 'technicalIntegrity', label: 'Integridade Técnica' },
+];
+
 const Results: React.FC<ResultsProps> = ({ result, onNewAnalysis }) => {
   // A simple function to get a color based on the score
   const getScoreColor = (score: number) => {
@@ -32,30 +41,14 @@ const Results: React.FC<ResultsProps> = ({ result, onNewAnalysis }) => {
         <p className="analysis-text">{result.analysis}</p>
 
         <div className="scores-grid">
-          <div className="score-item">
-            <h4>Confiabilidade da Fonte</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.sourceReliability) }}>
-              {result.sourceReliability}/100
+          {scoreConfig.map(({ key, label }) => (
+            <div key={key} className="score-item">
+              <h4>{label}</h4>
+              <div className="score-value" style={{ color: getScoreColor(result[key]) }}>
+                {result[key]}/100
+              </div>
             </div>
-          </div>
-          <div className="score-item">
-            <h4>Consistência Factual</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.factualConsistency) }}>
-              {result.factualConsistency}/100
-            </div>
-          </div>
-          <div className="score-item">
-            <h4>Qualidade do Conteúdo</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.contentQuality) }}>
-              {result.contentQuality}/100
-            </div>
-          </div>
-          <div className="score-item">
-            <h4>Integridade Técnica</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.technicalIntegrity) }}>
-              {result.technicalIntegrity}/100
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
