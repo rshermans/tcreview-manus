@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import type { AnalysisResult } from './components/Results';
 import ContentSubmission from './components/ContentSubmission';
 import ContentAnalysis from './components/ContentAnalysis';
 import Results from './components/Results';
@@ -9,9 +10,9 @@ type AppState = 'submission' | 'analyzing' | 'results';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('submission');
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
-  const handleAnalysisComplete = (result: any) => {
+  const handleAnalysisComplete = (result: AnalysisResult) => {
     setAnalysisResult(result);
     setAppState('results');
   };
