@@ -3,6 +3,9 @@ from services.llm_service import analyze_content, cross_verify_content, analyze_
 
 analysis_bp = Blueprint('analysis', __name__)
 
+ALLOWED_CONTENT_TYPES = {'text', 'image', 'link'}
+MAX_CONTENT_LENGTH = 10000
+
 @analysis_bp.route('/preliminary', methods=['POST'])
 def preliminary_analysis():
     """Endpoint para análise preliminar do conteúdo"""
@@ -12,6 +15,15 @@ def preliminary_analysis():
     
     content_type = data['type']
     content = data['content']
+
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        return jsonify({"error": "Tipo de conteúdo inválido"}), 400
+
+    if not isinstance(content, str):
+        return jsonify({"error": "Conteúdo deve ser texto"}), 400
+
+    if len(content) > MAX_CONTENT_LENGTH:
+        return jsonify({"error": "Conteúdo excede o tamanho máximo permitido"}), 400
     
     try:
         analysis_result = analyze_content(content_type, content)
