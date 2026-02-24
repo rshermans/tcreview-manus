@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 
 /*
@@ -6,33 +7,47 @@ import axios from 'axios';
  */
 const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+/**
+ * Generic POST request wrapper.
+ * Centralizes error handling and API URL construction.
+ *
+ * @param endpoint The API endpoint (e.g., '/analysis/preliminary')
+ * @param data The data to be sent in the request body
+ * @returns The response data
+ */
+async function post<T>(endpoint: string, data: any): Promise<T> {
+  try {
+    const response = await axios.post(`${API_URL}${endpoint}`, data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error requesting ${endpoint}:`, error);
+    throw error;
+  }
+}
+
 export async function analyzeContent(contentType: string, content: string): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/preliminary`, {
+  return post('/analysis/preliminary', {
     type: contentType,
     content: content,
   });
-  return response.data;
 }
 
 export async function crossVerifyContent(content: string, analysis: any): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/cross-verification`, {
+  return post('/analysis/cross-verification', {
     content: content,
     analysis: analysis,
   });
-  return response.data;
 }
 
 export async function analyzeContext(content: string): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/context`, { content });
-  return response.data;
+  return post('/analysis/context', { content });
 }
 
 export async function getFinalEvaluation(userPerception: any, aiAnalysis: any): Promise<any> {
-  const response = await axios.post(`${API_URL}/analysis/final`, {
+  return post('/analysis/final', {
     user_perception: userPerception,
     ai_analysis: aiAnalysis,
   });
-  return response.data;
 }
 
 const api = {
