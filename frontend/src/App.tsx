@@ -3,15 +3,16 @@ import './App.css';
 import ContentSubmission from './components/ContentSubmission';
 import ContentAnalysis from './components/ContentAnalysis';
 import Results from './components/Results';
+import type { AnalysisResult } from './types/api';
 
 // Define the possible states of the application
 type AppState = 'submission' | 'analyzing' | 'results';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('submission');
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
-  const handleAnalysisComplete = (result: any) => {
+  const handleAnalysisComplete = (result: AnalysisResult) => {
     setAnalysisResult(result);
     setAppState('results');
   };
