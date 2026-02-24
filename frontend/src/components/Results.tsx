@@ -23,6 +23,13 @@ const Results: React.FC<ResultsProps> = ({ result, onNewAnalysis }) => {
     return '#10b981'; // green
   };
 
+  const scoreConfig: { label: string; key: Exclude<keyof AnalysisResult, 'analysis'> }[] = [
+    { label: 'Confiabilidade da Fonte', key: 'sourceReliability' },
+    { label: 'Consistência Factual', key: 'factualConsistency' },
+    { label: 'Qualidade do Conteúdo', key: 'contentQuality' },
+    { label: 'Integridade Técnica', key: 'technicalIntegrity' },
+  ];
+
   return (
     <div className="card results-card">
       <h2>Resultados da Verificação Preliminar</h2>
@@ -32,30 +39,14 @@ const Results: React.FC<ResultsProps> = ({ result, onNewAnalysis }) => {
         <p className="analysis-text">{result.analysis}</p>
 
         <div className="scores-grid">
-          <div className="score-item">
-            <h4>Confiabilidade da Fonte</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.sourceReliability) }}>
-              {result.sourceReliability}/100
+          {scoreConfig.map((item) => (
+            <div key={item.key} className="score-item">
+              <h4>{item.label}</h4>
+              <div className="score-value" style={{ color: getScoreColor(result[item.key]) }}>
+                {result[item.key]}/100
+              </div>
             </div>
-          </div>
-          <div className="score-item">
-            <h4>Consistência Factual</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.factualConsistency) }}>
-              {result.factualConsistency}/100
-            </div>
-          </div>
-          <div className="score-item">
-            <h4>Qualidade do Conteúdo</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.contentQuality) }}>
-              {result.contentQuality}/100
-            </div>
-          </div>
-          <div className="score-item">
-            <h4>Integridade Técnica</h4>
-            <div className="score-value" style={{ color: getScoreColor(result.technicalIntegrity) }}>
-              {result.technicalIntegrity}/100
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
