@@ -67,6 +67,14 @@ def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     Returns mock data.
     """
     logger.info("Calculando avaliação final (mock)...")
+
+    if not user_perception or not ai_analysis:
+        raise ValueError("Input dictionaries cannot be empty")
+
+    for val in list(user_perception.values()) + list(ai_analysis.values()):
+        if not isinstance(val, (int, float)) or isinstance(val, bool):
+            raise ValueError("Values in user_perception and ai_analysis must be numeric")
+
     user_score = sum(user_perception.values()) / len(user_perception.values())
     ai_score = sum(ai_analysis.values()) / len(ai_analysis.values())
 
