@@ -1,5 +1,8 @@
 pytest==7.4.0
+pytest-asyncio
 flask
 flask-cors
 python-dotenv
-requests
+httpx
+asgiref
+uvicorn
