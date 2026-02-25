@@ -1,14 +1,6 @@
 import React from 'react';
 import './Results.css';
-
-// Define the expected structure of the analysis result
-interface AnalysisResult {
-  analysis: string;
-  sourceReliability: number;
-  factualConsistency: number;
-  contentQuality: number;
-  technicalIntegrity: number;
-}
+import type { AnalysisResult } from '../services/api';
 
 interface ResultsProps {
   result: AnalysisResult;

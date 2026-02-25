@@ -6,7 +6,15 @@ import axios from 'axios';
  */
 const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export async function analyzeContent(contentType: string, content: string): Promise<any> {
+export interface AnalysisResult {
+  analysis: string;
+  sourceReliability: number;
+  factualConsistency: number;
+  contentQuality: number;
+  technicalIntegrity: number;
+}
+
+export async function analyzeContent(contentType: string, content: string): Promise<AnalysisResult> {
   const response = await axios.post(`${API_URL}/analysis/preliminary`, {
     type: contentType,
     content: content,
@@ -14,7 +22,7 @@ export async function analyzeContent(contentType: string, content: string): Prom
   return response.data;
 }
 
-export async function crossVerifyContent(content: string, analysis: any): Promise<any> {
+export async function crossVerifyContent(content: string, analysis: AnalysisResult): Promise<unknown> {
   const response = await axios.post(`${API_URL}/analysis/cross-verification`, {
     content: content,
     analysis: analysis,
@@ -22,12 +30,12 @@ export async function crossVerifyContent(content: string, analysis: any): Promis
   return response.data;
 }
 
-export async function analyzeContext(content: string): Promise<any> {
+export async function analyzeContext(content: string): Promise<unknown> {
   const response = await axios.post(`${API_URL}/analysis/context`, { content });
   return response.data;
 }
 
-export async function getFinalEvaluation(userPerception: any, aiAnalysis: any): Promise<any> {
+export async function getFinalEvaluation(userPerception: Record<string, unknown>, aiAnalysis: Record<string, unknown>): Promise<unknown> {
   const response = await axios.post(`${API_URL}/analysis/final`, {
     user_perception: userPerception,
     ai_analysis: aiAnalysis,
