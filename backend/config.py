@@ -26,3 +26,6 @@ class Config:
     # Domínios permitidos para CORS, separados por vírgulas
     # Em produção defina por exemplo: "https://app.truecheck.com"
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
+
+    # Configuração de armazenamento do Rate Limiting (ex: memory:// ou redis://localhost:6379)
+    RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL', 'memory://')
