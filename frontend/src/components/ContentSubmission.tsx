@@ -82,19 +82,21 @@ const ContentSubmission: React.FC<ContentSubmissionProps> = ({ onAnalysisStart, 
 
       {contentType && (
         <div className="input-container">
-          <label>
+          <label htmlFor="content-input">
             {contentType === 'text' && 'Insira o texto para verificação:'}
             {contentType === 'link' && 'Insira o link para verificação:'}
             {contentType === 'image' && 'Insira o URL da imagem para verificação:'}
           </label>
           {contentType === 'text' ? (
             <textarea
+              id="content-input"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Cole ou digite o texto aqui..."
             />
           ) : (
             <input
+              id="content-input"
               type="text"
               value={content}
               onChange={(e) => setContent(e.target.value)}
