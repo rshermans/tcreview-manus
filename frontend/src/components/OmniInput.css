@@ -1,0 +1,84 @@
+.omni-input-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.omni-input-wrapper {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    padding: 20px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border: 2px solid transparent;
+    transition: border-color 0.3s ease;
+}
+
+.omni-input-wrapper:focus-within {
+    border-color: #4a90e2;
+}
+
+.omni-textarea {
+    width: 100%;
+    border: none;
+    resize: none;
+    font-size: 1.2rem;
+    font-family: 'Inter', sans-serif;
+    color: #333;
+    outline: none;
+    background: transparent;
+}
+
+.omni-textarea::placeholder {
+    color: #adb5bd;
+}
+
+.omni-analyze-btn {
+    align-self: flex-end;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.omni-analyze-btn:hover:not(:disabled) {
+    background: #357abd;
+    transform: translateY(-2px);
+}
+
+.omni-analyze-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.omni-hints {
+    margin-top: 15px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.spinner-icon {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

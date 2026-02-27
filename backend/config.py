@@ -23,9 +23,12 @@ class Config:
     # URL da API da LLM com fallback sensato
     LLM_API_URL = os.environ.get('LLM_API_URL', 'https://api.openai.com/v1/chat/completions')
 
+    # Provedor padrão: 'openai', 'gemini' ou 'deepseek'
+    LLM_PROVIDER = os.environ.get('LLM_PROVIDER', 'openai').lower()
+
     # Chave de API interna para segurança dos endpoints
     API_KEY = os.environ.get('API_KEY', 'default-api-key')
 
     # Domínios permitidos para CORS, separados por vírgulas
     # Em produção defina por exemplo: "https://app.truecheck.com"
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173')

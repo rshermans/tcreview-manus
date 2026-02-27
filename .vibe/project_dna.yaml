@@ -1,0 +1,48 @@
+# TrueCheck — Project DNA
+# Source of truth for all Vibe Code agents.
+# Last updated: 2026-02-26
+
+project_name: "TrueCheck"
+domain: "fact-checking / news-verification SaaS"
+phase: "scaling / refactor"
+
+stack:
+  frontend: "React + Vite + Tailwind CSS + TypeScript"
+  backend: "Python + Flask"
+  database: "N/A (to be defined - currently API driven analysis)"
+  infra: "Local dev setup currently"
+
+architecture: "Client-Server (REST API)"
+team_level: "mixed"
+
+conventions:
+  naming: "camelCase para JS/TS, snake_case para Python"
+  tests: "Playwright para E2E"
+  api_style: "REST"
+  error_handling: "Retorno padronizado JSON com descritivo claro"
+  comments: "Português para docstrings e comentários de negócio, inglês para nomes técnicos"
+
+key_components:
+  frontend:
+    - "OmniInput — input universal (texto, URL, imagem)"
+    - "CognitiveResults — resultados da análise cognitiva"
+    - "GamificationBar — barra de gamificação"
+    - "ProgressStepper — stepper de progresso"
+    - "Results — resultados finais"
+  backend:
+    - "orchestrator_service — orquestrador para routing de inputs"
+    - "llm_service — integração com LLM para fact-checking"
+    - "teach_agent — agente pedagógico"
+
+agents_product:
+  - name: "FactCheck Agent"
+    status: "mock"
+    file: "backend/services/llm_service.py"
+  - name: "Teach Agent"
+    status: "mock"
+    file: "backend/services/teach_agent.py"
+  - name: "Orchestrator"
+    status: "mock"
+    file: "backend/services/orchestrator_service.py"
+
+dna_version: "1.1.0"
