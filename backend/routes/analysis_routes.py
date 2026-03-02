@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify, request
 from services.llm_service import analyze_content, cross_verify_content, analyze_context, final_evaluation
+from utils.auth import auth_required
 
 analysis_bp = Blueprint('analysis', __name__)
 
 @analysis_bp.route('/preliminary', methods=['POST'])
+@auth_required
 def preliminary_analysis():
     """Endpoint para análise preliminar do conteúdo"""
     data = request.json
@@ -20,6 +22,7 @@ def preliminary_analysis():
         return jsonify({"error": str(e)}), 500
 
 @analysis_bp.route('/cross-verification', methods=['POST'])
+@auth_required
 def cross_verification():
     """Endpoint para verificação cruzada com outras fontes"""
     data = request.json
@@ -33,6 +36,7 @@ def cross_verification():
         return jsonify({"error": str(e)}), 500
 
 @analysis_bp.route('/context', methods=['POST'])
+@auth_required
 def context_analysis():
     """Endpoint para análise de contexto histórico e atual"""
     data = request.json
@@ -46,6 +50,7 @@ def context_analysis():
         return jsonify({"error": str(e)}), 500
 
 @analysis_bp.route('/final', methods=['POST'])
+@auth_required
 def final_evaluation_route():
     """Endpoint para avaliação final combinando análises anteriores"""
     data = request.json

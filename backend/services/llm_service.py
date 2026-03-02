@@ -10,19 +10,28 @@ def analyze_content(content_type: str, content: str) -> dict:
     Analisa o conteúdo usando a LLM.
     ...
     """
+    api_key = Config.LLM_API_KEY
+    api_url = Config.LLM_API_URL
+
     # Construir prompt omitido para brevidade
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
-    payload = {...}
+    payload = {"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": content}]}
 
     try:
         # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not api_key or api_key == "sua_chave_api_llm_aqui":
+        if not api_key or api_key == "sua_chave_api_llm_aqui" or api_key == "sua_chave_api_llm":
             logger.warning(
                 "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
-            return { ... }
+            return {
+                "analysis": "Análise simulada devido à falta de chave API.",
+                "sourceReliability": 70,
+                "factualConsistency": 80,
+                "contentQuality": 75,
+                "technicalIntegrity": 85
+            }
 
         # Chamada real
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
@@ -30,11 +39,24 @@ def analyze_content(content_type: str, content: str) -> dict:
         result = response.json()
         llm_response = result["choices"][0]["message"]["content"]
         # TODO: extrair pontuações reais
-        return { ... }
+        return {
+            "analysis": llm_response,
+            "sourceReliability": 85,
+            "factualConsistency": 90,
+            "contentQuality": 80,
+            "technicalIntegrity": 95
+        }
 
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
-        return { ... }
+        return {
+            "error": "Falha na análise",
+            "analysis": "Erro ao processar conteúdo.",
+            "sourceReliability": 0,
+            "factualConsistency": 0,
+            "contentQuality": 0,
+            "technicalIntegrity": 0
+        }
 
 def cross_verify_content(content: str, analysis: dict) -> dict:
     """
