@@ -126,11 +126,11 @@ def get_mock_analysis():
 
 # Mantém as outras funções como estão por enquanto (estão em conformidade)
 def cross_verify_content(content: str, analysis: dict) -> dict:
-    logger.info("Executando verificação cruzada (mock)...")
+    # Simulates cross-verifying the initial analysis against other sources
     return {
-        "cross_verification_summary": "A verificação cruzada com fontes de notícias simuladas indica uma cobertura mista.",
-        "verified_sources": ["Fonte A (Confiável)", "Fonte B (Duvidosa)"],
-        "confidence_score": 65
+        "verified": True,
+        "confidence_score": 0.92,
+        "notes": "Information matches known reliable sources."
     }
 
 def analyze_context(content: str) -> dict:
