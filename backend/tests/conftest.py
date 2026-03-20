@@ -2,16 +2,22 @@ import os
 import sys
 import pytest
 
-# Add backend directory to sys.path so imports in app.py work correctly
+# Adiciona o diretório backend ao sys.path para garantir que os módulos sejam encontrados
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Ensure SECRET_KEY is set before importing app
-os.environ["SECRET_KEY"] = "testing"
+# Configura a SECRET_KEY antes de importar o app, pois o Config valida sua existência
+os.environ['SECRET_KEY'] = 'test-key'
 
-from app import app
+from app import create_app
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+def app():
+    app = create_app()
+    app.config.update({
+        "TESTING": True,
+    })
+    return app
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
