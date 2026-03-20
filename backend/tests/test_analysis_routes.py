@@ -1,38 +1,51 @@
 import pytest
 from unittest.mock import patch
 
-def test_context_analysis_success(client):
-    """Testa o sucesso da análise de contexto"""
-    mock_response = {
-        "context_summary": "summary",
-        "historical_context": "history",
-        "current_relevance": "relevance"
-    }
+class TestFinalEvaluationRoute:
 
-    with patch('routes.analysis_routes.analyze_context', return_value=mock_response):
-        response = client.post('/api/analysis/context', json={'content': 'test content'})
+    def test_final_evaluation_missing_user_perception(self, client):
+        response = client.post('/api/analysis/final', json={
+            'ai_analysis': {'score': 80}
+        })
+        assert response.status_code == 400
+        assert response.json == {"error": "Dados incompletos para avaliação final"}
 
-    assert response.status_code == 200
-    assert response.get_json() == mock_response
+    def test_final_evaluation_missing_ai_analysis(self, client):
+        response = client.post('/api/analysis/final', json={
+            'user_perception': {'score': 70}
+        })
+        assert response.status_code == 400
+        assert response.json == {"error": "Dados incompletos para avaliação final"}
 
-def test_context_analysis_missing_content(client):
-    """Testa erro quando o conteúdo não é fornecido"""
-    response = client.post('/api/analysis/context', json={'wrong_key': 'test content'})
+    def test_final_evaluation_empty_json(self, client):
+        response = client.post('/api/analysis/final', json={})
+        assert response.status_code == 400
+        assert response.json == {"error": "Dados incompletos para avaliação final"}
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "Conteúdo não fornecido"}
+    def test_final_evaluation_no_json(self, client):
+        # Sending null JSON payload
+        response = client.post('/api/analysis/final', data='null', content_type='application/json')
+        assert response.status_code == 400
+        assert response.json == {"error": "Dados incompletos para avaliação final"}
 
-def test_context_analysis_no_data(client):
-    """Testa erro quando nenhum dado é enviado (corpo JSON vazio)"""
-    response = client.post('/api/analysis/context', json={})
+    @patch('routes.analysis_routes.final_evaluation')
+    def test_final_evaluation_success(self, mock_final_evaluation, client):
+        mock_final_evaluation.return_value = {
+            "final_score": 75,
+            "summary": "Test Summary",
+            "user_vs_ai_discrepancy": 5
+        }
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "Conteúdo não fornecido"}
+        payload = {
+            'user_perception': {'score': 70},
+            'ai_analysis': {'score': 80}
+        }
+        response = client.post('/api/analysis/final', json=payload)
 
-def test_context_analysis_error(client):
-    """Testa erro interno do servidor na análise de contexto"""
-    with patch('routes.analysis_routes.analyze_context', side_effect=Exception("Service Failure")):
-        response = client.post('/api/analysis/context', json={'content': 'test content'})
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Service Failure"}
+        assert response.status_code == 200
+        assert response.json == {
+            "final_score": 75,
+            "summary": "Test Summary",
+            "user_vs_ai_discrepancy": 5
+        }
+        mock_final_evaluation.assert_called_once_with({'score': 70}, {'score': 80})
