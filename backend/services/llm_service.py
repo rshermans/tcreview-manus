@@ -1,4 +1,5 @@
 import requests
+import json
 import os
 import logging
 from config import Config
@@ -7,44 +8,33 @@ logger = logging.getLogger(__name__)
 
 def analyze_content(content_type: str, content: str) -> dict:
     """
-    Analisa o conteúdo usando a LLM, suportando múltiplos provedores (OpenAI, Gemini, DeepSeek).
+    Analisa o conteúdo usando a LLM.
+    Retorna um dicionário com a análise e pontuações.
     """
-    provider = Config.LLM_PROVIDER
     api_key = Config.LLM_API_KEY
     api_url = Config.LLM_API_URL
 
-    # Mock fallback
-    if not api_key or api_key in ["sua_chave_api_llm", "sua_chave_api_llm_aqui"]:
-        logger.warning(f"Chave API não configurada para o provedor {provider}. Usando dados simulados.")
-        return get_mock_analysis()
-
     # Construir prompt
-    prompt = (
-        f"Analise o seguinte conteúdo do tipo '{content_type}' quanto à veracidade, "
-        f"vieses e confiabilidade. Retorne um resumo e uma pontuação de confiança.\n\n"
-        f"Conteúdo: {content}"
-    )
+    prompt = f"""
+    Analise o seguinte conteúdo ({content_type}):
+    {content}
 
-    try:
-        if provider == "openai" or provider == "deepseek":
-            return call_openai_compatible_api(api_url, api_key, prompt, provider)
-        elif provider == "gemini":
-            return call_gemini_api(api_url, api_key, prompt)
-        else:
-            logger.error(f"Provedor desconhecido: {provider}")
-            return get_mock_analysis()
-            
-    except Exception as e:
-        logger.exception(f"Erro ao chamar a API do provedor {provider}")
-        return {
-            "summary": f"Erro na análise ({provider}): {str(e)}",
-            "trust_score": 0,
-            "bias_indicators": [],
-            "fact_check_status": "error",
-            "recommendations": ["Tentar novamente mais tarde"]
-        }
+    Forneça uma análise detalhada e pontuações de 0 a 100 para os seguintes critérios:
+    - Confiabilidade da Fonte (sourceReliability)
+    - Consistência Factual (factualConsistency)
+    - Qualidade do Conteúdo (contentQuality)
+    - Integridade Técnica (technicalIntegrity)
 
-def call_openai_compatible_api(url, key, prompt, provider):
+    A resposta deve ser estritamente em formato JSON com a seguinte estrutura:
+    {{
+        "analysis": "texto da análise",
+        "sourceReliability": 85,
+        "factualConsistency": 90,
+        "contentQuality": 80,
+        "technicalIntegrity": 95
+    }}
+    """
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"
@@ -57,6 +47,15 @@ def call_openai_compatible_api(url, key, prompt, provider):
         "model": model,
         "messages": [
             {"role": "system", "content": "Você é um assistente de fact-checking especializado em avaliar a veracidade de notícias e conteúdos."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3
+    }
+
+    payload = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Você é um especialista em verificação de fatos e análise de conteúdo."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3
@@ -100,29 +99,55 @@ def call_gemini_api(url, key, prompt):
     result = response.json()
     
     try:
-        llm_response = result['candidates'][0]['content']['parts'][0]['text']
-    except (KeyError, IndexError):
-        llm_response = "Erro ao processar resposta do Gemini."
+        # Se não tivermos uma chave API válida, retornamos dados simulados
+        if not api_key or api_key == "sua_chave_api_llm_aqui":
+            logger.warning(
+                "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
+            return {
+                "analysis": "Esta é uma análise simulada porque a chave API da LLM não foi configurada. O conteúdo parece ser informativo, mas requer verificação adicional.",
+                "sourceReliability": 70,
+                "factualConsistency": 80,
+                "contentQuality": 75,
+                "technicalIntegrity": 90
+            }
 
-    return {
-        "summary": llm_response,
-        "trust_score": 80,
-        "bias_indicators": [],
-        "fact_check_status": "analyzed",
-        "recommendations": [],
-        "provider": "gemini"
-    }
+        # Chamada real
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        llm_response = result["choices"][0]["message"]["content"]
 
-def get_mock_analysis():
-    return {
-        "summary": "Análise simulada: O conteúdo apresenta elementos que requerem verificação factual. "
-                   "Foram identificados possíveis vieses de confirmação e uso de linguagem sensacionalista.",
-        "trust_score": 45,
-        "bias_indicators": ["linguagem emocional", "fontes não citadas", "generalização excessiva"],
-        "fact_check_status": "mock",
-        "recommendations": ["Verificar fontes primárias", "Comparar com veículos de referência"],
-        "provider": "mock"
-    }
+        try:
+            # Tentar extrair JSON da resposta da LLM
+            # Às vezes a LLM pode incluir texto antes ou depois do JSON,
+            # mas pedimos estritamente JSON no prompt.
+            data = json.loads(llm_response)
+            return {
+                "analysis": data.get("analysis", "Sem análise disponível"),
+                "sourceReliability": data.get("sourceReliability", 50),
+                "factualConsistency": data.get("factualConsistency", 50),
+                "contentQuality": data.get("contentQuality", 50),
+                "technicalIntegrity": data.get("technicalIntegrity", 50)
+            }
+        except json.JSONDecodeError:
+            logger.error(f"Falha ao decodificar JSON da resposta da LLM: {llm_response}")
+            return {
+                "analysis": llm_response,
+                "sourceReliability": 50,
+                "factualConsistency": 50,
+                "contentQuality": 50,
+                "technicalIntegrity": 50
+            }
+
+    except Exception as e:
+        logger.exception("Erro ao chamar a API da LLM")
+        return {
+            "analysis": f"Erro ao processar a análise: {str(e)}",
+            "sourceReliability": 0,
+            "factualConsistency": 0,
+            "contentQuality": 0,
+            "technicalIntegrity": 0
+        }
 
 # Mantém as outras funções como estão por enquanto (estão em conformidade)
 def cross_verify_content(content: str, analysis: dict) -> dict:
@@ -144,18 +169,12 @@ def analyze_context(content: str) -> dict:
 def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     logger.info("Calculando avaliação final (mock)...")
 
-    def calculate_average(data: dict) -> float:
-        if not data:
-            return 0.0
+    # Filtrar apenas valores numéricos para cálculo da média
+    user_values = [v for v in user_perception.values() if isinstance(v, (int, float))]
+    ai_values = [v for v in ai_analysis.values() if isinstance(v, (int, float))]
 
-        valid_values = [v for v in data.values() if isinstance(v, (int, float))]
-        if not valid_values:
-            return 0.0
-
-        return sum(valid_values) / len(valid_values)
-
-    user_score = calculate_average(user_perception)
-    ai_score = calculate_average(ai_analysis)
+    user_score = sum(user_values) / len(user_values) if user_values else 0
+    ai_score = sum(ai_values) / len(ai_values) if ai_values else 0
 
     final_score = (user_score * 0.3) + (ai_score * 0.7) # Ponderado para a IA
 
