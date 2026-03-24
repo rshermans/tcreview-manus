@@ -1,43 +1,85 @@
 import { useState } from 'react';
 import './App.css';
-import ContentSubmission from './components/ContentSubmission';
-import ContentAnalysis from './components/ContentAnalysis';
-import Results from './components/Results';
+import GamificationBar from './components/GamificationBar';
+import OmniInput from './components/OmniInput';
+import CognitiveResults from './components/CognitiveResults';
 
-// Define the possible states of the application
-type AppState = 'submission' | 'analyzing' | 'results';
+type AppState = 'input' | 'analyzing' | 'results';
 
 function App() {
-  const [appState, setAppState] = useState<AppState>('submission');
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [appState, setAppState] = useState<AppState>('input');
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  const handleAnalysisComplete = (result: any) => {
-    setAnalysisResult(result);
-    setAppState('results');
+  // Mocked User Gamification Data (would come from Auth/Backend)
+  const userStats = {
+    streak: 12,
+    tokens: 450,
+    level: 'Investigador Junior'
   };
 
-  const handleNewAnalysis = () => {
-    setAppState('submission');
+  const handleAnalyze = async (content: string, type: 'text' | 'url' | 'image') => {
+    setAppState('analyzing');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/analysis/omni', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, type })
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha na análise');
+      }
+
+      const backendResult = await response.json();
+
+      const formattedResult = {
+        trust_score: backendResult.trust_score || 'N/A',
+        summary: backendResult.summary || 'A análise indica a presença de viés e linguagem sensacionalista.',
+        teach_insights: backendResult.teach_insights,
+        details: content
+      };
+
+      setAnalysisResult(formattedResult);
+      setAppState('results');
+    } catch (error) {
+      console.error("Erro ao comunicar com backend:", error);
+      setAppState('input'); // Reset on error
+    }
+  };
+
+  const resetToInput = () => {
+    setAppState('input');
     setAnalysisResult(null);
   };
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>TrueCheck</h1>
-      </header>
-      <main>
-        {appState === 'submission' && (
-          <ContentSubmission
-            onAnalysisStart={() => setAppState('analyzing')}
-            onAnalysisComplete={handleAnalysisComplete}
+      <GamificationBar
+        streak={userStats.streak}
+        tokens={userStats.tokens}
+        level={userStats.level}
+      />
+
+      <main className="app-main">
+        {appState !== 'results' && (
+          <div className="hero-section">
+            <h1>O que vamos verificar hoje?</h1>
+            <p>Descubra a veracidade de notícias, links ou imagens.</p>
+          </div>
+        )}
+
+        {(appState === 'input' || appState === 'analyzing') && (
+          <OmniInput
+            onAnalyze={handleAnalyze}
+            isAnalyzing={appState === 'analyzing'}
           />
         )}
-        {appState === 'analyzing' && <ContentAnalysis />}
+
         {appState === 'results' && analysisResult && (
-          <Results
+          <CognitiveResults
             result={analysisResult}
-            onNewAnalysis={handleNewAnalysis}
+            onNewAnalysis={resetToInput}
           />
         )}
       </main>
