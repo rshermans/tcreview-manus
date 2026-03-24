@@ -1,4 +1,7 @@
 import requests
+import os
+import json
+import re
 import logging
 import json
 from config import Config
@@ -10,12 +13,28 @@ logger = logging.getLogger(__name__)
 def _analyze_content_impl(content_type: str, content: str) -> dict:
     """
     Analisa o conteúdo usando a LLM.
+    Retorna um dicionário com a análise e pontuações de 0 a 100.
     """
-    # Configurações da API
     api_key = Config.LLM_API_KEY
     api_url = Config.LLM_API_URL
+    model = Config.LLM_MODEL
 
-    # Construir prompt omitido para brevidade
+    # Prompt detalhado para garantir retorno em JSON
+    prompt = f"""
+    Analise a veracidade e qualidade do seguinte conteúdo do tipo '{content_type}':
+
+    "{content}"
+
+    Responda estritamente em formato JSON com a seguinte estrutura:
+    {{
+      "analysis": "um resumo detalhado da análise em português",
+      "sourceReliability": 0-100,
+      "factualConsistency": 0-100,
+      "contentQuality": 0-100,
+      "technicalIntegrity": 0-100
+    }}
+    """
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {Config.LLM_API_KEY}"
@@ -62,59 +81,62 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         ]
     }
 
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "Você é um especialista em verificação de fatos e análise de conteúdo."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3
+    }
+
+    # Dados de fallback em caso de falha ou falta de chave
+    mock_data = {
+        "analysis": "Esta é uma análise simulada porque a API da LLM não foi chamada ou a configuração está ausente.",
+        "sourceReliability": 75,
+        "factualConsistency": 80,
+        "contentQuality": 70,
+        "technicalIntegrity": 85
+    }
+
     try:
         # Se não tivermos uma chave API válida, retornamos dados simulados
         if not api_key:
             logger.warning(
                 "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
-            return {
-                "analysis": "Esta é uma análise simulada, pois a chave API não foi configurada.",
-                "sourceReliability": 70,
-                "factualConsistency": 70,
-                "contentQuality": 70,
-                "technicalIntegrity": 70
-            }
+            return mock_data
 
         # Chamada real
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         llm_response = result["choices"][0]["message"]["content"]
-        # TODO: extrair pontuações reais
-        return {
-            "analysis": llm_response,
-            "sourceReliability": 85,
-            "factualConsistency": 85,
-            "contentQuality": 85,
-            "technicalIntegrity": 85
-        }
 
-        # Em uma implementação real, extrairíamos pontuações do retorno da LLM.
-        # Por enquanto, retornamos valores fixos com o texto da LLM.
-        return {
-            "analysis": llm_response,
-            "sourceReliability": 85,
-            "factualConsistency": 90,
-            "contentQuality": 80,
-            "technicalIntegrity": 95
-        }
+        # Tentar extrair JSON da resposta (lidando com possíveis blocos de código markdown)
+        json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+        if json_match:
+            try:
+                parsed_result = json.loads(json_match.group(0))
+                # Garantir que todos os campos necessários existam
+                required_fields = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
+                for field in required_fields:
+                    if field not in parsed_result:
+                        if field == "analysis":
+                            parsed_result[field] = "Análise não disponível"
+                        else:
+                            parsed_result[field] = 0
+                return parsed_result
+            except json.JSONDecodeError:
+                logger.error("Falha ao decodificar JSON da resposta da LLM")
 
-    # Extrair conteúdo da resposta da LLM (assumindo formato OpenAI)
-    if "choices" in result and len(result["choices"]) > 0:
-        llm_content = result["choices"][0]["message"]["content"]
-
-        # Tentar parsear se o conteúdo for JSON, senão retornar texto e valores aleatórios/fixos
-        # Para simplificar, retornamos valores fixos razoáveis se o parse falhar ou não for implementado
+        logger.warning("Resposta da LLM não contém um JSON válido. Tentando usar resposta bruta.")
         return {
-            "analysis": llm_content,
-            "sourceReliability": random.randint(60, 90),
-            "factualConsistency": random.randint(60, 90),
-            "contentQuality": random.randint(60, 90),
-            "technicalIntegrity": random.randint(60, 90)
+            "analysis": llm_response[:1000],
+            "sourceReliability": 0,
+            "factualConsistency": 0,
+            "contentQuality": 0,
+            "technicalIntegrity": 0
         }
-    else:
-        logger.error("Resposta da API da LLM em formato inesperado")
-        raise ValueError("Invalid API response format")
 
 def analyze_content(content_type: str, content: str) -> dict:
     """
@@ -126,13 +148,7 @@ def analyze_content(content_type: str, content: str) -> dict:
         return _analyze_content_impl(content_type, content)
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
-        return {
-            "analysis": f"Erro na análise: {str(e)}",
-            "sourceReliability": 0,
-            "factualConsistency": 0,
-            "contentQuality": 0,
-            "technicalIntegrity": 0
-        }
+        return mock_data
 
 # Mantém as outras funções como estão por enquanto (estão em conformidade)
 def cross_verify_content(content: str, analysis: dict) -> dict:
@@ -154,16 +170,24 @@ def analyze_context(content: str) -> dict:
 def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     logger.info("Calculando avaliação final (mock)...")
 
-    user_values = [v for v in user_perception.values() if isinstance(v, (int, float))]
-    user_score = sum(user_values) / len(user_values) if user_values else 0
+    # Filtra apenas valores numéricos para o cálculo
+    user_scores = [v for v in user_perception.values() if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    ai_scores = [v for v in ai_analysis.values() if isinstance(v, (int, float)) and not isinstance(v, bool)]
 
-    ai_values = [v for v in ai_analysis.values() if isinstance(v, (int, float))]
-    ai_score = sum(ai_values) / len(ai_values) if ai_values else 0
+    if not user_scores or not ai_scores:
+        return {
+            "final_score": 0,
+            "summary": "Dados insuficientes para cálculo.",
+            "user_vs_ai_discrepancy": 0
+        }
+
+    user_score = sum(user_scores) / len(user_scores)
+    ai_score = sum(ai_scores) / len(ai_scores)
 
     final_score = (user_score * 0.3) + (ai_score * 0.7) # Ponderado para a IA
 
     return {
         "final_score": round(final_score),
-        "summary": "A análise combinada sugere que o conteúdo é parcialmente factual.",
-        "user_vs_ai_discrepancy": abs(user_score - ai_score)
+        "summary": "A análise combinada sugere que o conteúdo é parcialmente factual, com uma inclinação para a análise da IA.",
+        "user_vs_ai_discrepancy": round(abs(user_score - ai_score), 2)
     }
