@@ -5,16 +5,27 @@ from services.orchestrator_service import process_omni_input
 
 analysis_bp = Blueprint('analysis', __name__)
 
-@analysis_bp.route('/omni', methods=['POST'])
-@auth_required
-def omni_analysis():
-    """Endpoint único para Omni-Input (TrueCheck 2.0)"""
+ALLOWED_CONTENT_TYPES = {'text', 'image', 'link'}
+MAX_CONTENT_LENGTH = 10000
+
+@analysis_bp.route('/preliminary', methods=['POST'])
+def preliminary_analysis():
+    """Endpoint para análise preliminar do conteúdo"""
     data = request.json
     if not data or 'content' not in data or 'type' not in data:
         return jsonify({"error": "Faltando conteúdo ou tipo no Omni-Input"}), 400
     
     content_type = data['type']
     content = data['content']
+
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        return jsonify({"error": "Tipo de conteúdo inválido"}), 400
+
+    if not isinstance(content, str):
+        return jsonify({"error": "Conteúdo deve ser texto"}), 400
+
+    if len(content) > MAX_CONTENT_LENGTH:
+        return jsonify({"error": "Conteúdo excede o tamanho máximo permitido"}), 400
     
     try:
         # Repassa para o orquestrador que lida com parsing/roteamento para agentes
