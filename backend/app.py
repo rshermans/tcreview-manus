@@ -3,6 +3,7 @@ import logging
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
+from limiter import limiter
 from routes.analysis_routes import analysis_bp
 
 # Configurar logging básico
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 # Criar a aplicação Flask
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Inicializar o rate limiting
+limiter.init_app(app)
 
 # Configurar CORS de forma restritiva. Permite múltiplos domínios separados por vírgulas.
 origins = [origin.strip() for origin in Config.CORS_ORIGINS.split(',')] if Config.CORS_ORIGINS else []
