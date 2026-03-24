@@ -155,12 +155,15 @@ def analyze_context(content: str) -> dict:
 def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     logger.info("Calculando avaliação final (mock)...")
 
-    # Filtrar apenas valores numéricos para cálculo da média
-    user_values = [v for v in user_perception.values() if isinstance(v, (int, float))]
-    ai_values = [v for v in ai_analysis.values() if isinstance(v, (int, float))]
+    if not user_perception:
+        user_score = 0
+    else:
+        user_score = sum(user_perception.values()) / len(user_perception.values())
 
-    user_score = sum(user_values) / len(user_values) if user_values else 0
-    ai_score = sum(ai_values) / len(ai_values) if ai_values else 0
+    if not ai_analysis:
+        ai_score = 0
+    else:
+        ai_score = sum(ai_analysis.values()) / len(ai_analysis.values())
 
     final_score = (user_score * 0.3) + (ai_score * 0.7) # Ponderado para a IA
 
