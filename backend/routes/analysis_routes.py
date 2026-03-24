@@ -1,9 +1,11 @@
+import logging
 from flask import Blueprint, jsonify, request
 from services.llm_service import analyze_content, cross_verify_content, analyze_context, final_evaluation
 from utils.auth import auth_required
 from services.orchestrator_service import process_omni_input
 
 analysis_bp = Blueprint('analysis', __name__)
+logger = logging.getLogger(__name__)
 
 ALLOWED_CONTENT_TYPES = {'text', 'image', 'link'}
 MAX_CONTENT_LENGTH = 10000
@@ -32,7 +34,8 @@ def preliminary_analysis():
         analysis_result = process_omni_input(content, content_type)
         return jsonify(analysis_result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na análise preliminar")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/cross-verification', methods=['POST'])
 @auth_required
@@ -46,7 +49,8 @@ def cross_verification():
         result = cross_verify_content(data['content'], data['analysis'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na verificação cruzada")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/context', methods=['POST'])
 @auth_required
@@ -60,7 +64,8 @@ def context_analysis():
         result = analyze_context(data['content'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na análise de contexto")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/final', methods=['POST'])
 @auth_required
@@ -74,4 +79,5 @@ def final_evaluation_route():
         result = final_evaluation(data['user_perception'], data['ai_analysis'])
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Erro na avaliação final")
+        return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500

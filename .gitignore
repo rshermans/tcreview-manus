@@ -3,3 +3,5 @@ __pycache__/
 .env
 jules-scratch/
 .DS_Store
+node_modules/
+dist/
