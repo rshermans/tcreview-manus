@@ -1,6 +1,4 @@
 import requests
-import json
-import os
 import logging
 from config import Config
 
@@ -37,19 +35,7 @@ def analyze_content(content_type: str, content: str) -> dict:
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {key}"
-    }
-    
-    # DeepSeek cost control: uses deepseek-chat (V3) by default
-    model = "gpt-4o-mini" if provider == "openai" else "deepseek-chat"
-    
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "Você é um assistente de fact-checking especializado em avaliar a veracidade de notícias e conteúdos."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.3
+        "Authorization": f"Bearer {Config.LLM_API_KEY}"
     }
 
     payload = {
@@ -100,7 +86,7 @@ def call_gemini_api(url, key, prompt):
     
     try:
         # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not api_key or api_key == "sua_chave_api_llm_aqui":
+        if not Config.LLM_API_KEY or Config.LLM_API_KEY == "sua_chave_api_llm_aqui":
             logger.warning(
                 "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
             return {
@@ -112,7 +98,7 @@ def call_gemini_api(url, key, prompt):
             }
 
         # Chamada real
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(Config.LLM_API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         llm_response = result["choices"][0]["message"]["content"]
