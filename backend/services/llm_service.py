@@ -11,6 +11,7 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
     """
     Analisa o conteúdo usando a LLM.
     """
+    # Configurações da API
     api_key = Config.LLM_API_KEY
     api_url = Config.LLM_API_URL
 
@@ -53,18 +54,25 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         ],
         "temperature": 0.7
     }
+    payload = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
+            {"role": "user", "content": f"Analise este conteúdo ({content_type}): {content}"}
+        ]
+    }
 
     try:
         # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not api_key or api_key == "sua_chave_api_llm_aqui":
+        if not api_key:
             logger.warning(
                 "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
             return {
-                "analysis": "Este é um resumo simulado porque a chave API não foi configurada. O conteúdo parece ser informativo, mas requer verificação adicional.",
-                "sourceReliability": 50,
-                "factualConsistency": 50,
-                "contentQuality": 50,
-                "technicalIntegrity": 50
+                "analysis": "Esta é uma análise simulada, pois a chave API não foi configurada.",
+                "sourceReliability": 70,
+                "factualConsistency": 70,
+                "contentQuality": 70,
+                "technicalIntegrity": 70
             }
 
         # Chamada real
@@ -72,6 +80,14 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         response.raise_for_status()
         result = response.json()
         llm_response = result["choices"][0]["message"]["content"]
+        # TODO: extrair pontuações reais
+        return {
+            "analysis": llm_response,
+            "sourceReliability": 85,
+            "factualConsistency": 85,
+            "contentQuality": 85,
+            "technicalIntegrity": 85
+        }
 
         # Em uma implementação real, extrairíamos pontuações do retorno da LLM.
         # Por enquanto, retornamos valores fixos com o texto da LLM.
@@ -111,7 +127,7 @@ def analyze_content(content_type: str, content: str) -> dict:
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
         return {
-            "analysis": f"Erro ao processar a análise: {str(e)}",
+            "analysis": f"Erro na análise: {str(e)}",
             "sourceReliability": 0,
             "factualConsistency": 0,
             "contentQuality": 0,
