@@ -31,9 +31,9 @@ python app.py
 Executar frontend:
 
 cd frontend
-cp .env.example .env  # Ajuste REACT_APP_API_URL se necessário
+cp .env.example .env  # Ajuste VITE_API_URL se necessário
 npm install
-npm start
+npm run dev
 # Para build de produção:
 npm run build
 
