@@ -1,5 +1,6 @@
 import requests
 import logging
+import json
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -7,30 +8,26 @@ logger = logging.getLogger(__name__)
 def analyze_content(content_type: str, content: str) -> dict:
     """
     Analisa o conteúdo usando a LLM.
-    Retorna um dicionário com a análise e pontuações.
+    Retorna um dicionário com chaves:
+    - analysis: str
+    - sourceReliability: int
+    - factualConsistency: int
+    - contentQuality: int
+    - technicalIntegrity: int
     """
     api_key = Config.LLM_API_KEY
     api_url = Config.LLM_API_URL
 
-    # Construir prompt
     prompt = f"""
-    Analise o seguinte conteúdo ({content_type}):
-    {content}
+    Analyze the following {content_type} content:
+    "{content}"
 
-    Forneça uma análise detalhada e pontuações de 0 a 100 para os seguintes critérios:
-    - Confiabilidade da Fonte (sourceReliability)
-    - Consistência Factual (factualConsistency)
-    - Qualidade do Conteúdo (contentQuality)
-    - Integridade Técnica (technicalIntegrity)
-
-    A resposta deve ser estritamente em formato JSON com a seguinte estrutura:
-    {{
-        "analysis": "texto da análise",
-        "sourceReliability": 85,
-        "factualConsistency": 90,
-        "contentQuality": 80,
-        "technicalIntegrity": 95
-    }}
+    Provide a JSON response with the following keys:
+    - analysis: A brief text summary of the analysis.
+    - sourceReliability: An integer score (0-100).
+    - factualConsistency: An integer score (0-100).
+    - contentQuality: An integer score (0-100).
+    - technicalIntegrity: An integer score (0-100).
     """
 
     headers = {
@@ -61,6 +58,15 @@ def analyze_content(content_type: str, content: str) -> dict:
         "provider": provider
     }
 
+    payload = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant that analyzes content credibility."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
 def call_gemini_api(url, key, prompt):
     # Gemini API Studio format
     if "api.openai.com" in url:
@@ -86,14 +92,14 @@ def call_gemini_api(url, key, prompt):
     
     try:
         # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not Config.LLM_API_KEY or Config.LLM_API_KEY == "sua_chave_api_llm_aqui":
+        if not api_key or api_key.startswith("sua_chave") or "your_key" in api_key:
             logger.warning(
                 "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
             return {
-                "analysis": "Esta é uma análise simulada porque a chave API da LLM não foi configurada. O conteúdo parece ser informativo, mas requer verificação adicional.",
-                "sourceReliability": 70,
-                "factualConsistency": 80,
-                "contentQuality": 75,
+                "analysis": "Análise simulada: O conteúdo parece ser parcialmente confiável, mas carece de fontes verificáveis.",
+                "sourceReliability": 60,
+                "factualConsistency": 70,
+                "contentQuality": 80,
                 "technicalIntegrity": 90
             }
 
@@ -101,24 +107,25 @@ def call_gemini_api(url, key, prompt):
         response = requests.post(Config.LLM_API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
-        llm_response = result["choices"][0]["message"]["content"]
 
+        content_text = result["choices"][0]["message"]["content"]
+
+        # Tentar fazer o parse do JSON retornado pela LLM
         try:
-            # Tentar extrair JSON da resposta da LLM
-            # Às vezes a LLM pode incluir texto antes ou depois do JSON,
-            # mas pedimos estritamente JSON no prompt.
-            data = json.loads(llm_response)
+            analysis_result = json.loads(content_text)
+            if not isinstance(analysis_result, dict):
+                raise ValueError("Resposta da LLM não é um JSON válido (dicionário).")
+
+            # Garantir que todas as chaves esperadas existam
+            expected_keys = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
+            for key in expected_keys:
+                if key not in analysis_result:
+                    analysis_result[key] = 0 if key != "analysis" else "Análise incompleta."
+            return analysis_result
+        except (json.JSONDecodeError, ValueError):
+            logger.error("Falha ao decodificar JSON ou formato inválido da resposta da LLM: %s", content_text)
             return {
-                "analysis": data.get("analysis", "Sem análise disponível"),
-                "sourceReliability": data.get("sourceReliability", 50),
-                "factualConsistency": data.get("factualConsistency", 50),
-                "contentQuality": data.get("contentQuality", 50),
-                "technicalIntegrity": data.get("technicalIntegrity", 50)
-            }
-        except json.JSONDecodeError:
-            logger.error(f"Falha ao decodificar JSON da resposta da LLM: {llm_response}")
-            return {
-                "analysis": llm_response,
+                "analysis": content_text, # Retorna o texto cru se não for JSON válido
                 "sourceReliability": 50,
                 "factualConsistency": 50,
                 "contentQuality": 50,
@@ -128,7 +135,7 @@ def call_gemini_api(url, key, prompt):
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
         return {
-            "analysis": f"Erro ao processar a análise: {str(e)}",
+            "analysis": "Erro na análise.",
             "sourceReliability": 0,
             "factualConsistency": 0,
             "contentQuality": 0,
@@ -155,15 +162,11 @@ def analyze_context(content: str) -> dict:
 def final_evaluation(user_perception: dict, ai_analysis: dict) -> dict:
     logger.info("Calculando avaliação final (mock)...")
 
-    if not user_perception or not ai_analysis:
-        raise ValueError("Input dictionaries cannot be empty")
+    user_values = [v for v in user_perception.values() if isinstance(v, (int, float))]
+    user_score = sum(user_values) / len(user_values) if user_values else 0
 
-    for val in list(user_perception.values()) + list(ai_analysis.values()):
-        if not isinstance(val, (int, float)) or isinstance(val, bool):
-            raise ValueError("Values in user_perception and ai_analysis must be numeric")
-
-    user_score = sum(user_perception.values()) / len(user_perception.values())
-    ai_score = sum(ai_analysis.values()) / len(ai_analysis.values())
+    ai_values = [v for v in ai_analysis.values() if isinstance(v, (int, float))]
+    ai_score = sum(ai_values) / len(ai_values) if ai_values else 0
 
     final_score = (user_score * 0.3) + (ai_score * 0.7) # Ponderado para a IA
 
