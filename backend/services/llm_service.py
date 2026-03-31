@@ -3,11 +3,14 @@ import os
 import json
 import re
 import logging
-import json
+from functools import lru_cache
 from config import Config
 import random
 
 logger = logging.getLogger(__name__)
+
+# Configurar uma sessão global para reutilizar conexões HTTP (Connection Pooling)
+session = requests.Session()
 
 @lru_cache(maxsize=128)
 def _analyze_content_impl(content_type: str, content: str) -> dict:
@@ -50,7 +53,7 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
     user_prompt = f"Type: {content_type}\nContent: {content}"
 
     payload = {
-        "model": "gpt-3.5-turbo",
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -58,40 +61,52 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         "temperature": 0.3
     }
 
-    mock_data = {
-        "analysis": "Análise simulada: O conteúdo parece verídico, mas requer verificação adicional.",
-        "sourceReliability": 85,
-        "factualConsistency": 90,
-        "contentQuality": 80,
-        "technicalIntegrity": 95
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise o seguinte conteúdo ({content_type}): {content}"}
-        ],
-        "temperature": 0.7
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise este conteúdo ({content_type}): {content}"}
-        ]
+    # Se não tivermos uma chave API válida, lançamos erro para ser capturado por analyze_content
+    if not api_key or api_key in ['sua_chave_api_llm', 'sua_chave_api_llm_aqui']:
+        logger.warning(
+            "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
+        raise ValueError("API Key missing or placeholder")
+
+    # Chamada real usando o objeto session para connection pooling
+    response = session.post(api_url, headers=headers, json=payload, timeout=30)
+    response.raise_for_status()
+    result = response.json()
+    llm_response = result["choices"][0]["message"]["content"]
+
+    # Tentar extrair JSON da resposta (lidando com possíveis blocos de código markdown)
+    json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+    if json_match:
+        try:
+            parsed_result = json.loads(json_match.group(0))
+            # Garantir que todos os campos necessários existam
+            required_fields = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
+            for field in required_fields:
+                if field not in parsed_result:
+                    if field == "analysis":
+                        parsed_result[field] = "Análise não disponível"
+                    else:
+                        parsed_result[field] = 0
+            return parsed_result
+        except json.JSONDecodeError:
+            logger.error("Falha ao decodificar JSON da resposta da LLM")
+
+    logger.warning("Resposta da LLM não contém um JSON válido. Tentando usar resposta bruta.")
+    return {
+        "analysis": llm_response[:1000],
+        "sourceReliability": 0,
+        "factualConsistency": 0,
+        "contentQuality": 0,
+        "technicalIntegrity": 0
     }
 
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos e análise de conteúdo."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.3
-    }
-
+def analyze_content(content_type: str, content: str) -> dict:
+    """
+    Analisa o conteúdo usando a LLM.
+    Retorna um dicionário com os resultados da análise.
+    Encapsula a chamada cacheada para tratar exceções.
+    """
     # Dados de fallback em caso de falha ou falta de chave
-    mock_data = {
+    fallback_mock_data = {
         "analysis": "Esta é uma análise simulada porque a API da LLM não foi chamada ou a configuração está ausente.",
         "sourceReliability": 75,
         "factualConsistency": 80,
@@ -100,55 +115,10 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
     }
 
     try:
-        # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not api_key:
-            logger.warning(
-                "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
-            return mock_data
-
-        # Chamada real
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        llm_response = result["choices"][0]["message"]["content"]
-
-        # Tentar extrair JSON da resposta (lidando com possíveis blocos de código markdown)
-        json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
-        if json_match:
-            try:
-                parsed_result = json.loads(json_match.group(0))
-                # Garantir que todos os campos necessários existam
-                required_fields = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
-                for field in required_fields:
-                    if field not in parsed_result:
-                        if field == "analysis":
-                            parsed_result[field] = "Análise não disponível"
-                        else:
-                            parsed_result[field] = 0
-                return parsed_result
-            except json.JSONDecodeError:
-                logger.error("Falha ao decodificar JSON da resposta da LLM")
-
-        logger.warning("Resposta da LLM não contém um JSON válido. Tentando usar resposta bruta.")
-        return {
-            "analysis": llm_response[:1000],
-            "sourceReliability": 0,
-            "factualConsistency": 0,
-            "contentQuality": 0,
-            "technicalIntegrity": 0
-        }
-
-def analyze_content(content_type: str, content: str) -> dict:
-    """
-    Analisa o conteúdo usando a LLM.
-    Retorna um dicionário com os resultados da análise.
-    Encapsula a chamada cacheada para tratar exceções.
-    """
-    try:
         return _analyze_content_impl(content_type, content)
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
-        return mock_data
+        return fallback_mock_data
 
 # Mantém as outras funções como estão por enquanto (estão em conformidade)
 def cross_verify_content(content: str, analysis: dict) -> dict:

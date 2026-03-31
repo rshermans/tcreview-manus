@@ -8,11 +8,14 @@ import sys
 os.environ['SECRET_KEY'] = 'test-secret-key'
 
 # Mocking Config before it's used if necessary, but here we will patch it.
-from services.llm_service import analyze_content
+from services.llm_service import analyze_content, _analyze_content_impl
 
 class TestLLMService(unittest.TestCase):
 
-    @patch('requests.post')
+    def setUp(self):
+        _analyze_content_impl.cache_clear()
+
+    @patch('services.llm_service.session.post')
     def test_analyze_content_success(self, mock_post):
         # Configurar mock para resposta da API
         mock_response = MagicMock()
@@ -45,7 +48,7 @@ class TestLLMService(unittest.TestCase):
         self.assertEqual(result['contentQuality'], 85)
         self.assertEqual(result['technicalIntegrity'], 80)
 
-    @patch('requests.post')
+    @patch('services.llm_service.session.post')
     def test_analyze_content_markdown_json(self, mock_post):
         # Testar quando a LLM retorna JSON envolto em markdown
         mock_response = MagicMock()
@@ -77,7 +80,7 @@ class TestLLMService(unittest.TestCase):
         self.assertIn("simulada", result['analysis'])
         self.assertEqual(result['sourceReliability'], 75)
 
-    @patch('requests.post')
+    @patch('services.llm_service.session.post')
     def test_analyze_content_invalid_json(self, mock_post):
         # Testar fallback quando a LLM retorna JSON inválido
         mock_response = MagicMock()
