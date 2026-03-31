@@ -1,7 +1,9 @@
 import logging
 from flask import Blueprint, jsonify, request
 from services.llm_service import analyze_content, cross_verify_content, analyze_context, final_evaluation
+from services.orchestrator_service import process_omni_input
 from limiter import limiter
+from utils.auth import auth_required
 
 analysis_bp = Blueprint('analysis', __name__)
 logger = logging.getLogger(__name__)
@@ -10,6 +12,7 @@ ALLOWED_CONTENT_TYPES = {'text', 'image', 'link'}
 MAX_CONTENT_LENGTH = 10000
 
 @analysis_bp.route('/preliminary', methods=['POST'])
+@auth_required
 @limiter.limit("10 per minute")
 def preliminary_analysis():
     """Endpoint para análise preliminar do conteúdo"""
@@ -38,6 +41,7 @@ def preliminary_analysis():
         return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/cross-verification', methods=['POST'])
+@auth_required
 @limiter.limit("10 per minute")
 def cross_verification():
     """Endpoint para verificação cruzada com outras fontes"""
@@ -53,6 +57,7 @@ def cross_verification():
         return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/context', methods=['POST'])
+@auth_required
 @limiter.limit("10 per minute")
 def context_analysis():
     """Endpoint para análise de contexto histórico e atual"""
@@ -68,6 +73,7 @@ def context_analysis():
         return jsonify({"error": "Ocorreu um erro interno no servidor"}), 500
 
 @analysis_bp.route('/final', methods=['POST'])
+@auth_required
 @limiter.limit("20 per minute")
 def final_evaluation_route():
     """Endpoint para avaliação final combinando análises anteriores"""

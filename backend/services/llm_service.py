@@ -3,7 +3,7 @@ import os
 import json
 import re
 import logging
-import json
+from functools import lru_cache
 from config import Config
 import random
 
@@ -38,47 +38,6 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {Config.LLM_API_KEY}"
-    }
-
-    system_prompt = (
-        "You are an expert content verification assistant. "
-        "Analyze the following content and return a valid JSON object (no markdown, no extra text) with the following fields: "
-        "analysis (string summary), sourceReliability (integer 0-100), factualConsistency (integer 0-100), "
-        "contentQuality (integer 0-100), technicalIntegrity (integer 0-100)."
-    )
-
-    user_prompt = f"Type: {content_type}\nContent: {content}"
-
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.3
-    }
-
-    mock_data = {
-        "analysis": "Análise simulada: O conteúdo parece verídico, mas requer verificação adicional.",
-        "sourceReliability": 85,
-        "factualConsistency": 90,
-        "contentQuality": 80,
-        "technicalIntegrity": 95
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise o seguinte conteúdo ({content_type}): {content}"}
-        ],
-        "temperature": 0.7
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise este conteúdo ({content_type}): {content}"}
-        ]
     }
 
     payload = {
@@ -137,6 +96,17 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
             "contentQuality": 0,
             "technicalIntegrity": 0
         }
+    except Exception as e:
+        logger.exception("Erro interno no _analyze_content_impl")
+        # Define mock_data inside try/except block or at function level if it's reused
+        mock_data_fallback = {
+            "analysis": "Esta é uma análise simulada porque ocorreu um erro ao processar a resposta da LLM.",
+            "sourceReliability": 50,
+            "factualConsistency": 50,
+            "contentQuality": 50,
+            "technicalIntegrity": 50
+        }
+        return mock_data_fallback
 
 def analyze_content(content_type: str, content: str) -> dict:
     """
@@ -148,7 +118,13 @@ def analyze_content(content_type: str, content: str) -> dict:
         return _analyze_content_impl(content_type, content)
     except Exception as e:
         logger.exception("Erro ao chamar a API da LLM")
-        return mock_data
+        return {
+            "analysis": "Esta é uma análise simulada porque ocorreu um erro ao chamar a API da LLM.",
+            "sourceReliability": 50,
+            "factualConsistency": 50,
+            "contentQuality": 50,
+            "technicalIntegrity": 50
+        }
 
 # Mantém as outras funções como estão por enquanto (estão em conformidade)
 def cross_verify_content(content: str, analysis: dict) -> dict:
