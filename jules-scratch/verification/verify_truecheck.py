@@ -8,9 +8,6 @@ def run_verification(page: Page):
     # 1. Navigate to the app
     page.goto("http://localhost:5173")
 
-    # DEBUG: Take a screenshot immediately to see what the page looks like on load
-    page.screenshot(path="jules-scratch/verification/debug_initial_load.png")
-
     # 2. Select input type and fill content
     page.get_by_role("button", name="Texto").click()
 
