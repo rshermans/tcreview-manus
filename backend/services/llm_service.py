@@ -3,11 +3,20 @@ import os
 import json
 import re
 import logging
-import json
+from functools import lru_cache
 from config import Config
 import random
 
 logger = logging.getLogger(__name__)
+
+# Dados de fallback em caso de falha ou falta de chave
+mock_data = {
+    "analysis": "Esta é uma análise simulada porque a API da LLM não foi chamada ou a configuração está ausente.",
+    "sourceReliability": 75,
+    "factualConsistency": 80,
+    "contentQuality": 70,
+    "technicalIntegrity": 85
+}
 
 @lru_cache(maxsize=128)
 def _analyze_content_impl(content_type: str, content: str) -> dict:
@@ -40,47 +49,6 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         "Authorization": f"Bearer {Config.LLM_API_KEY}"
     }
 
-    system_prompt = (
-        "You are an expert content verification assistant. "
-        "Analyze the following content and return a valid JSON object (no markdown, no extra text) with the following fields: "
-        "analysis (string summary), sourceReliability (integer 0-100), factualConsistency (integer 0-100), "
-        "contentQuality (integer 0-100), technicalIntegrity (integer 0-100)."
-    )
-
-    user_prompt = f"Type: {content_type}\nContent: {content}"
-
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.3
-    }
-
-    mock_data = {
-        "analysis": "Análise simulada: O conteúdo parece verídico, mas requer verificação adicional.",
-        "sourceReliability": 85,
-        "factualConsistency": 90,
-        "contentQuality": 80,
-        "technicalIntegrity": 95
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise o seguinte conteúdo ({content_type}): {content}"}
-        ],
-        "temperature": 0.7
-    }
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Você é um especialista em verificação de fatos."},
-            {"role": "user", "content": f"Analise este conteúdo ({content_type}): {content}"}
-        ]
-    }
-
     payload = {
         "model": model,
         "messages": [
@@ -90,53 +58,43 @@ def _analyze_content_impl(content_type: str, content: str) -> dict:
         "temperature": 0.3
     }
 
-    # Dados de fallback em caso de falha ou falta de chave
-    mock_data = {
-        "analysis": "Esta é uma análise simulada porque a API da LLM não foi chamada ou a configuração está ausente.",
-        "sourceReliability": 75,
-        "factualConsistency": 80,
-        "contentQuality": 70,
-        "technicalIntegrity": 85
+    # Se não tivermos uma chave API válida, retornamos dados simulados
+    if not api_key:
+        logger.warning(
+            "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
+        return mock_data
+
+    # Chamada real
+    response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+    response.raise_for_status()
+    result = response.json()
+    llm_response = result["choices"][0]["message"]["content"]
+
+    # Tentar extrair JSON da resposta (lidando com possíveis blocos de código markdown)
+    json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+    if json_match:
+        try:
+            parsed_result = json.loads(json_match.group(0))
+            # Garantir que todos os campos necessários existam
+            required_fields = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
+            for field in required_fields:
+                if field not in parsed_result:
+                    if field == "analysis":
+                        parsed_result[field] = "Análise não disponível"
+                    else:
+                        parsed_result[field] = 0
+            return parsed_result
+        except json.JSONDecodeError:
+            logger.error("Falha ao decodificar JSON da resposta da LLM")
+
+    logger.warning("Resposta da LLM não contém um JSON válido. Tentando usar resposta bruta.")
+    return {
+        "analysis": llm_response[:1000],
+        "sourceReliability": 0,
+        "factualConsistency": 0,
+        "contentQuality": 0,
+        "technicalIntegrity": 0
     }
-
-    try:
-        # Se não tivermos uma chave API válida, retornamos dados simulados
-        if not api_key:
-            logger.warning(
-                "Chave API da LLM não configurada. Usando dados simulados para desenvolvimento.")
-            return mock_data
-
-        # Chamada real
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        llm_response = result["choices"][0]["message"]["content"]
-
-        # Tentar extrair JSON da resposta (lidando com possíveis blocos de código markdown)
-        json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
-        if json_match:
-            try:
-                parsed_result = json.loads(json_match.group(0))
-                # Garantir que todos os campos necessários existam
-                required_fields = ["analysis", "sourceReliability", "factualConsistency", "contentQuality", "technicalIntegrity"]
-                for field in required_fields:
-                    if field not in parsed_result:
-                        if field == "analysis":
-                            parsed_result[field] = "Análise não disponível"
-                        else:
-                            parsed_result[field] = 0
-                return parsed_result
-            except json.JSONDecodeError:
-                logger.error("Falha ao decodificar JSON da resposta da LLM")
-
-        logger.warning("Resposta da LLM não contém um JSON válido. Tentando usar resposta bruta.")
-        return {
-            "analysis": llm_response[:1000],
-            "sourceReliability": 0,
-            "factualConsistency": 0,
-            "contentQuality": 0,
-            "technicalIntegrity": 0
-        }
 
 def analyze_content(content_type: str, content: str) -> dict:
     """
