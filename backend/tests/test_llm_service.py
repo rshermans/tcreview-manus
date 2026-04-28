@@ -8,9 +8,13 @@ import sys
 os.environ['SECRET_KEY'] = 'test-secret-key'
 
 # Mocking Config before it's used if necessary, but here we will patch it.
-from services.llm_service import analyze_content
+from services.llm_service import analyze_content, _analyze_content_impl
 
 class TestLLMService(unittest.TestCase):
+
+    def setUp(self):
+        # Limpar o cache antes de cada teste para evitar poluição entre testes
+        _analyze_content_impl.cache_clear()
 
     @patch('requests.post')
     def test_analyze_content_success(self, mock_post):
@@ -71,7 +75,7 @@ class TestLLMService(unittest.TestCase):
     def test_analyze_content_no_api_key(self):
         # Testar fallback quando a chave da API está faltando
         with patch('services.llm_service.Config') as mock_config:
-            mock_config.LLM_API_KEY = 'sua_chave_api_llm_aqui'
+            mock_config.LLM_API_KEY = '' # Vazio para forçar fallback
             result = analyze_content('text', 'Conteúdo de teste')
 
         self.assertIn("simulada", result['analysis'])
