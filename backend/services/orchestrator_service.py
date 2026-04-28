@@ -1,6 +1,4 @@
 import logging
-import urllib.parse
-from flask import current_app
 
 logger = logging.getLogger(__name__)
 

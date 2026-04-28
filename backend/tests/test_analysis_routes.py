@@ -1,6 +1,6 @@
-<<<<<<< test/context-analysis-endpoint-9598432640193792600
 import pytest
 from unittest.mock import patch, MagicMock
+from flask import json
 
 def test_context_analysis_success(client):
     """Test context analysis endpoint with valid data."""
@@ -41,10 +41,6 @@ def test_context_analysis_service_error(client):
 
         assert response.status_code == 500
         assert response.json == {"error": "Service failure"}
-=======
-from flask import json
-from unittest.mock import patch, MagicMock
-import pytest
 
 def test_preliminary_analysis_missing_content(client):
     """Test preliminary analysis with missing 'content' field."""
@@ -52,7 +48,7 @@ def test_preliminary_analysis_missing_content(client):
     assert response.status_code == 400
     data = json.loads(response.data)
     assert 'error' in data
-    assert data['error'] == 'Faltando conteúdo ou tipo'
+    assert data['error'] == 'Faltando conteúdo ou tipo no Omni-Input'
 
 def test_preliminary_analysis_missing_type(client):
     """Test preliminary analysis with missing 'type' field."""
@@ -60,7 +56,7 @@ def test_preliminary_analysis_missing_type(client):
     assert response.status_code == 400
     data = json.loads(response.data)
     assert 'error' in data
-    assert data['error'] == 'Faltando conteúdo ou tipo'
+    assert data['error'] == 'Faltando conteúdo ou tipo no Omni-Input'
 
 def test_preliminary_analysis_empty_json(client):
     """Test preliminary analysis with empty JSON body."""
@@ -68,17 +64,21 @@ def test_preliminary_analysis_empty_json(client):
     assert response.status_code == 400
     data = json.loads(response.data)
     assert 'error' in data
-    assert data['error'] == 'Faltando conteúdo ou tipo'
+    assert data['error'] == 'Faltando conteúdo ou tipo no Omni-Input'
 
-@patch('routes.analysis_routes.analyze_content')
-def test_preliminary_analysis_success(mock_analyze, client):
+@patch('routes.analysis_routes.process_omni_input')
+def test_preliminary_analysis_success(mock_process, client):
     """Test preliminary analysis with valid input."""
-    # Mock the return value of analyze_content
+    # Mock the return value of process_omni_input
     mock_response = {
-        'analysis': 'This is a test analysis',
-        'score': 0.9
+        "trust_score": "90%",
+        "summary": "This is a test analysis",
+        "teach_insights": [],
+        "perception_insights": {},
+        "original_type": "text",
+        "provider": "openai"
     }
-    mock_analyze.return_value = mock_response
+    mock_process.return_value = mock_response
 
     payload = {
         'content': 'This is some content to analyze',
@@ -91,14 +91,12 @@ def test_preliminary_analysis_success(mock_analyze, client):
     assert data == mock_response
 
     # Verify mock was called correctly
-    mock_analyze.assert_called_once_with('text', 'This is some content to analyze')
+    mock_process.assert_called_once_with('This is some content to analyze', 'text')
 
 def test_preliminary_analysis_internal_error(client):
     """Test preliminary analysis when LLM service fails."""
-    # Note: We need to patch where it is used. Since app imports routes.analysis_routes,
-    # we patch routes.analysis_routes.analyze_content
-    with patch('routes.analysis_routes.analyze_content') as mock_analyze:
-        mock_analyze.side_effect = Exception("LLM Error")
+    with patch('routes.analysis_routes.process_omni_input') as mock_process:
+        mock_process.side_effect = Exception("Internal Error")
 
         payload = {
             'content': 'This is some content to analyze',
@@ -109,5 +107,4 @@ def test_preliminary_analysis_internal_error(client):
         assert response.status_code == 500
         data = json.loads(response.data)
         assert 'error' in data
-        assert data['error'] == 'LLM Error'
->>>>>>> main
+        assert data['error'] == 'Ocorreu um erro interno no servidor'
